@@ -2,12 +2,20 @@
 Script for generating email messages within one mailbox in MS Exchange environment.
 Options described below
 """
-# TODO - create ability to specify '--file_size' option to generate a file for attachment
 import subprocess
 import optparse
 import sys
+import os
 
 counter = 1  # used for printing how many messages created
+path_to_temp_file = os.environ.get("TEMP") + "\\temp.file"  # temp file is created in %TMP% folder
+
+
+def generate_file(size):  # Generate a file to attach to a message
+    with open(path_to_temp_file, 'wb') as resulted_file:
+        resulted_file.write(size)
+        resulted_file.close()
+        print("\nFile " + path_to_temp_file + " created for attachments")
 
 
 def filter_none(option):  # To avoid concatenation None type to string we filter options from None values
@@ -21,15 +29,17 @@ def generator():
     parser.add_option("-t", "--to", type="string", help="Target mailbot, e.g target@test.local")
     parser.add_option("-f", "--from", dest="fr", type="string", help="Sender mailbox, e.g sender@test.local (or any)")
     parser.add_option("-s", "--subject", dest="sbj", type="string", help="Enter any text for subject")
-    parser.add_option("-a", "--attachment", dest="att", type="string", help=r"Enter a path to a file, e.g. C:\file.txt")
-    parser.add_option("-r", "--smtp", dest="smtpserv", type="string",
+    parser.add_option("-a", "--attachment_size", dest="att", type="int",
+                      help=r"Enter size for file to attach (in bytes)")
+    parser.add_option("-m", "--smtp", dest="smtpserv", type="string",
                       help="Enter SMTP server name or address, e.g server.test.local")
     parser.add_option("-c", "--count", dest="cnt", type="int", help="Specify number how many messages to send, e.g 10")
     opts, args = parser.parse_args()  # Parsing options
     send_to = opts.to  # assign specified options to variable. opts.to is the value under --to option
     send_from = opts.fr
     subject = opts.sbj
-    attachments = opts.att
+    if opts.att is not None:
+        generate_file(os.urandom(opts.att))  # size in bytes specified in CMD option --attachment_size or -a
     smtpserver = opts.smtpserv
     count = opts.cnt
     to_resulted = " "  # Variables to create a PowerShell '--parameter value' things
@@ -52,7 +62,10 @@ def generator():
     except Exception:
         print("'-subject' not specified, continue...")
     try:
-        attachments_resulted = filter_none("-attachments " + attachments + " ")
+        if opts.att is None:  # Checking if --attachment_size option not specified, specify this as empty string
+            attachments_resulted = ""
+        else:
+            attachments_resulted = filter_none("-attachments " + path_to_temp_file + " ")
     except Exception:
         print("'-attachments' not specified, continue...")
     try:
@@ -68,11 +81,15 @@ def generator():
             try:
                 gen = subprocess.run(
                     ["Powershell", "send-mailmessage", to_resulted, from_resulted, subject_resulted,
-                     attachments_resulted, smtpserver_resulted], timeout=30, check=True, stdout=subprocess.PIPE)
+                     attachments_resulted, smtpserver_resulted], timeout=10, check=True, stdout=subprocess.PIPE)
                 result = gen.stdout.decode('utf-8')
                 print(result)
             except subprocess.CalledProcessError as e:
                 print(e.output, "\n\n!!! No messages have been sent due to above exception !!!\n")
+                try:
+                    os.remove(path_to_temp_file)
+                except Exception:
+                    print("\n")
                 sys.exit()
             print("=== ", counter + i, " message(s) created")
     except TypeError as err:
@@ -88,3 +105,7 @@ if __name__ == '__main__':
         print("Timeout error")
     except Exception:
         raise
+    try:
+        os.remove(path_to_temp_file)
+    except Exception:
+        print("\n")
