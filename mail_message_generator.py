@@ -1,6 +1,11 @@
 """
 Script for generating email messages within one mailbox in MS Exchange environment.
-Options described below
+All options have to be specified with values to populate a specified mailbox with emails.
+Emails can be sent with attachments or without them. Attachment should be specified as a size in bytes without quotes.
+If attachment option is specified, a file with specified size will be created in %TEMP% directory.
+This file will be attached to each email message and automatically deleted after script completion.
+Make sure that the size of the file is below the limits of Exchange/mailbox settings. Otherwise, script will fail.
+Available options described below.
 """
 import subprocess
 import optparse
@@ -15,7 +20,7 @@ def generate_file(size):  # Generate a file to attach to a message
     with open(path_to_temp_file, 'wb') as resulted_file:
         resulted_file.write(size)
         resulted_file.close()
-        print("\nFile " + path_to_temp_file + " created for attachments")
+        print("\nFile " + path_to_temp_file + " created for attachments\n")
 
 
 def filter_none(option):  # To avoid concatenation None type to string we filter options from None values
@@ -81,7 +86,7 @@ def generator():
             try:
                 gen = subprocess.run(
                     ["Powershell", "send-mailmessage", to_resulted, from_resulted, subject_resulted,
-                     attachments_resulted, smtpserver_resulted], timeout=10, check=True, stdout=subprocess.PIPE)
+                     attachments_resulted, smtpserver_resulted], timeout=30, check=True, stdout=subprocess.PIPE)
                 result = gen.stdout.decode('utf-8')
                 print(result)
             except subprocess.CalledProcessError as e:
@@ -93,7 +98,7 @@ def generator():
                 sys.exit()
             print("=== ", counter + i, " message(s) created")
     except TypeError as err:
-        print("\n", err, "\nCheck if --count parameter is specified")
+        print("\n", err, "\nCheck if --count parameter is specified. \nType -h for help")
 
 
 if __name__ == '__main__':
