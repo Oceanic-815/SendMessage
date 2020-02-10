@@ -7,13 +7,20 @@ This file will be attached to each email message and automatically deleted after
 Make sure that the size of the file is below the limits of Exchange/mailbox settings. Otherwise, script will fail.
 Available options described below.
 """
+#  TODO  think about making --from option equal to --to option
 import subprocess
 import optparse
+import random
 import sys
 import os
 
 counter = 1  # used for printing how many messages created
 path_to_temp_file = os.environ.get("TEMP") + "\\temp.file"  # temp file is created in %TMP% folder
+set_subject = 'abcdefghigklmnopqrstuvwxyz1234567890'
+
+
+def rand_subject(lenght):
+    return ''.join(random.choice(set_subject) for i in range(lenght))
 
 
 def generate_file(size):  # Generate a file to attach to a message
@@ -33,7 +40,6 @@ def generator():
     parser = optparse.OptionParser()
     parser.add_option("-t", "--to", type="string", help="Target mailbot, e.g target@test.local")
     parser.add_option("-f", "--from", dest="fr", type="string", help="Sender mailbox, e.g sender@test.local (or any)")
-    parser.add_option("-s", "--subject", dest="sbj", type="string", help="Enter any text for subject")
     parser.add_option("-a", "--attachment_size", dest="att", type="int",
                       help=r"Enter size for file to attach (in bytes)")
     parser.add_option("-m", "--smtp", dest="smtpserv", type="string",
@@ -42,14 +48,12 @@ def generator():
     opts, args = parser.parse_args()  # Parsing options
     send_to = opts.to  # assign specified options to variable. opts.to is the value under --to option
     send_from = opts.fr
-    subject = opts.sbj
     if opts.att is not None:
         generate_file(os.urandom(opts.att))  # size in bytes specified in CMD option --attachment_size or -a
     smtpserver = opts.smtpserv
     count = opts.cnt
     to_resulted = " "  # Variables to create a PowerShell '--parameter value' things
     from_resulted = " "
-    subject_resulted = " "
     attachments_resulted = " "
     smtpserver_resulted = " "
     count_resulted = 1
@@ -57,15 +61,11 @@ def generator():
     try:
         to_resulted = filter_none("-to " + send_to + " ")
     except Exception:
-        print("'-to' option not specified, continue...")
+        pass
     try:
         from_resulted = filter_none("-from " + send_from + " ")
     except Exception:
-        print("'-from' option not specified, continue...")
-    try:
-        subject_resulted = filter_none("-subject " + subject + " ")
-    except Exception:
-        print("'-subject' not specified, continue...")
+        pass
     try:
         if opts.att is None:  # Checking if --attachment_size option not specified, specify this as empty string
             attachments_resulted = ""
@@ -76,21 +76,22 @@ def generator():
     try:
         smtpserver_resulted = filter_none("-smtpserver " + smtpserver + " ")
     except Exception:
-        print("'-smtpserver' not specified, continue...")
+        pass
     try:
         count_resulted = filter_none(count)
     except Exception:
-        print("'-count' not specified, continue...")
+        print("\n'-count' should be specified!\n")
     try:
         for i in range(count_resulted):  # Executing command '--count' number of times
+            subject_resulted = str(rand_subject(50))
             try:
                 gen = subprocess.run(
                     ["Powershell", "send-mailmessage", to_resulted, from_resulted, subject_resulted,
-                     attachments_resulted, smtpserver_resulted], timeout=30, check=True, stdout=subprocess.PIPE)
+                     attachments_resulted, smtpserver_resulted], timeout=60, check=True, stdout=subprocess.PIPE)
                 result = gen.stdout.decode('utf-8')
                 print(result)
             except subprocess.CalledProcessError as e:
-                print(e.output, "\n\n!!! No messages have been sent due to above exception !!!\n")
+                print(e.output, "\n\n!!! The message has not been sent due to above exception !!!\n")
                 try:
                     os.remove(path_to_temp_file)
                 except Exception:
@@ -105,7 +106,7 @@ if __name__ == '__main__':
     try:
         generator()
     except KeyboardInterrupt:
-        print("\nOperation canceled by user")
+        print("\nOperation canceled by user\n")
     except subprocess.TimeoutExpired:
         print("Timeout error")
     except Exception:
