@@ -115,3 +115,6 @@ if __name__ == '__main__':
         os.remove(path_to_temp_file)
     except Exception:
         print("\n")
+        
+# Building exe> C:\Projects\SendMessage>pyinstaller --onefile -i C:\Projects\SendMessage\mail_message_generator.exe
+# --noupx mail_message_generator.py
