@@ -8,11 +8,13 @@ Make sure that the size of the file is below the limits of Exchange/mailbox sett
 Available options described below.
 """
 #  TODO  think about making --from option equal to --to option
+#  TODO  need to create an option that increase mailbox and DB size limits
 import subprocess
 import optparse
 import random
 import sys
 import os
+import re
 
 counter = 1  # used for printing how many messages created
 path_to_temp_file = os.environ.get("TEMP") + "\\temp.file"  # temp file is created in %TMP% folder
@@ -96,6 +98,9 @@ def generator():
                     os.remove(path_to_temp_file)
                 except Exception:
                     print("\n")
+                if re.findall("PRX2", str(e.output)):
+                    print("POSSIBLE SOLUTION:")
+                    print("Add IPs of this machine and DC to 'hosts' file of Exchange machine where command executed.")
                 sys.exit()
             print("=== ", counter + i, " message(s) created")
     except TypeError as err:
@@ -115,6 +120,6 @@ if __name__ == '__main__':
         os.remove(path_to_temp_file)
     except Exception:
         print("\n")
-        
+
 # Building exe> C:\Projects\SendMessage>pyinstaller --onefile -i C:\Projects\SendMessage\mail_message_generator.exe
 # --noupx mail_message_generator.py
