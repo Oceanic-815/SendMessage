@@ -7,7 +7,6 @@ This file will be attached to each email message and automatically deleted after
 Make sure that the size of the file is below the limits of Exchange/mailbox settings. Otherwise, script will fail.
 Available options described below.
 """
-#  TODO  think about making --from option equal to --to option
 #  TODO  need to create an option that increase mailbox and DB size limits
 import subprocess
 import optparse
@@ -41,7 +40,7 @@ def generator():
     #  Creation of options
     parser = optparse.OptionParser()
     parser.add_option("-t", "--to", type="string", help="Target mailbot, e.g target@test.local")
-    parser.add_option("-f", "--from", dest="fr", type="string", help="Sender mailbox, e.g sender@test.local (or any)")
+    #parser.add_option("-f", "--from", dest="fr", type="string", help="Sender mailbox, e.g sender@test.local (or any)")
     parser.add_option("-a", "--attachment_size", dest="att", type="int",
                       help=r"Enter size for file to attach (in bytes)")
     parser.add_option("-m", "--smtp", dest="smtpserv", type="string",
@@ -49,7 +48,7 @@ def generator():
     parser.add_option("-c", "--count", dest="cnt", type="int", help="Specify number how many messages to send, e.g 10")
     opts, args = parser.parse_args()  # Parsing options
     send_to = opts.to  # assign specified options to variable. opts.to is the value under --to option
-    send_from = opts.fr
+    # send_from = opts.fr # Used before when --from option was necessary
     if opts.att is not None:
         generate_file(os.urandom(opts.att))  # size in bytes specified in CMD option --attachment_size or -a
     smtpserver = opts.smtpserv
@@ -65,7 +64,7 @@ def generator():
     except Exception:
         pass
     try:
-        from_resulted = filter_none("-from " + send_from + " ")
+        from_resulted = filter_none("-from " + send_to + " ")  # send_from was changed to send_to. send_from not needed
     except Exception:
         pass
     try:
