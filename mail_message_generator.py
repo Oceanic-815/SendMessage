@@ -36,6 +36,41 @@ def filter_none(option):  # To avoid concatenation None type to string we filter
         return option
 
 
+# Increase limits Set-TransportConfig and Set-ReceiveConnector for current host
+def increase_limits(*args, **kwargs):
+    get_comp_name = ('\'' + "Default " + os.environ['COMPUTERNAME'] + '\'')
+    cmd = "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -ExecutionPolicy RemoteSigned -noexit -command \". 'C:\\Program Files\\Microsoft\\Exchange Server\\V15\\bin\\RemoteExchange.ps1'; Connect-ExchangeServer -auto; Set-TransportConfig -MaxSendSize unlimited; Set-TransportConfig -MaxReceiveSize unlimited; Set-ReceiveConnector " + get_comp_name + " -MaxMessageSize '1.9GB'; Set-SendConnector " + get_comp_name + " -MaxMessageSize '1.9GB' \""
+    com = subprocess.run(cmd, stdout=subprocess.PIPE)
+    # print(cmd)
+    res = com.stdout.decode('utf-8')
+    print(res)
+
+
+# To set –MaxSendSize and –MaxReceiveSize for each mailbox, we need to get a list mailboxes. This func is doing it
+def getting_mailboxes():
+    get_mailbox_cmd = "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -ExecutionPolicy RemoteSigned -noexit -command \". 'C:\\Program Files\\Microsoft\\Exchange Server\\V15\\bin\\RemoteExchange.ps1'; Connect-ExchangeServer -auto; Get-Mailbox | fl name \""
+    get_mailbox_exec = subprocess.run(get_mailbox_cmd, stdout=subprocess.PIPE)
+    get_mailbox_raw_output = get_mailbox_exec.stdout.decode('utf-8')
+    get_mailbox_splitted_output = get_mailbox_raw_output.split("\n")
+    get_mailbox_raw_list = []
+    for i in get_mailbox_splitted_output:
+        if "Name : " in i:
+            get_mailbox_raw_list.append(i)
+    list_of_names = []
+    for i2 in get_mailbox_raw_list:
+        list_of_names.append(i2[7:].replace("\r",""))
+    return list_of_names
+
+
+# May be useful to set –MaxSendSize and –MaxReceiveSize for each mailbox
+def setting_mailbox_rx_size_limits():
+    for item in getting_mailboxes():
+        set_command = "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -ExecutionPolicy RemoteSigned -noexit -command \". 'C:\\Program Files\\Microsoft\\Exchange Server\\V15\\bin\\RemoteExchange.ps1'; Connect-ExchangeServer -auto; Set-Mailbox " + item + " –MaxSendSize 1024MB –MaxReceiveSize 1024MB \""
+        run_set_mailbox = subprocess.run(set_command, stdout=subprocess.PIPE)
+        set_mailbox_output = run_set_mailbox.stdout.decode('utf-8')
+        print(set_mailbox_output)
+
+
 def generator():
     #  Creation of options
     parser = optparse.OptionParser()
@@ -46,6 +81,7 @@ def generator():
     parser.add_option("-m", "--smtp", dest="smtpserv", type="string",
                       help="Enter SMTP server name or address, e.g server.test.local")
     parser.add_option("-c", "--count", dest="cnt", type="int", help="Specify number how many messages to send, e.g 10")
+    parser.add_option("-i", "--increaselimits", dest="increase", action="callback", callback=increase_limits, help="Increases messages/attachment size limits on Exchange")
     opts, args = parser.parse_args()  # Parsing options
     send_to = opts.to  # assign specified options to variable. opts.to is the value under --to option
     # send_from = opts.fr # Used before when --from option was necessary
@@ -82,6 +118,7 @@ def generator():
         count_resulted = filter_none(count)
     except Exception:
         print("\n'-count' should be specified!\n")
+
     try:
         for i in range(count_resulted):  # Executing command '--count' number of times
             subject_resulted = str(rand_subject(50))
@@ -120,5 +157,20 @@ if __name__ == '__main__':
     except Exception:
         print("\n")
 
-# Building exe> C:\Projects\SendMessage>pyinstaller --onefile -i C:\Projects\SendMessage\mail_message_generator.exe
-# --noupx mail_message_generator.py
+# pyinstaller --onefile -i C:\Projects\SendMessage\mail_message_generator.ico --noupx mail_message_generator.py
+
+
+#C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -noexit -command ". 'C:\Program Files\Microsoft\Exchange Server\V15\bin\RemoteExchange.ps1'; Connect-ExchangeServer -auto -ClientApplication:ManagementShell "
+
+# Set-TransportConfig -MaxSendSize unlimited
+# Set-TransportConfig -MaxReceiveSize unlimited
+
+# ??????????
+# Set-ReceiveConnector "Default WIN-OL" -MaxMessageSize 1.9GB
+# Name                           MaxMessageSize
+# ----                           --------------
+# Default WIN-OL                 1.9 GB (2,040,109,465 bytes)
+# Client Proxy WIN-OL            1.9 GB (2,040,109,465 bytes)
+# Default Frontend WIN-OL        1.9 GB (2,040,109,465 bytes)
+# Outbound Proxy Frontend WIN-OL 1.9 GB (2,040,109,465 bytes)
+# Client Frontend WIN-OL         1.9 GB (2,040,109,465 bytes)
